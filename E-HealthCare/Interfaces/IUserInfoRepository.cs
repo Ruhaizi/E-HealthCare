@@ -9,5 +9,9 @@ namespace E_HealthCare.Interfaces
     public interface IUserInfoRepository
     {
         Task<UserInfo> Authenticate(string userName, string password);
+
+        void Register(string userName, string password);
+
+        Task<bool> UseralreadyExists(string userName);
     }
 }

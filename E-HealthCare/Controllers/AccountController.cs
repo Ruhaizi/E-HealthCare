@@ -3,6 +3,7 @@ using E_HealthCare.Interfaces;
 using E_HealthCare.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.Configuration;
 using Microsoft.IdentityModel.Tokens;
 using System;
 using System.Collections.Generic;
@@ -19,30 +20,46 @@ namespace E_HealthCare.Controllers
     public class AccountController : ControllerBase
     {
         private readonly IUnitOfWork uow;
-        public AccountController(IUnitOfWork uow)
+
+        private readonly IConfiguration configuration;
+        public AccountController(IUnitOfWork uow,IConfiguration configuration)
         {
+            this.configuration = configuration;
             this.uow = uow;
         }
 
         [HttpPost("login")]
-        public async Task<IActionResult> Login(UserInfo userinfo)
+        public async Task<IActionResult> Login(LoginReqDto loginReq)
         {
-            var user = await uow.UserInfoRepository.Authenticate(userinfo.Username, userinfo.Password);
+            var userinfo = await uow.UserInfoRepository.Authenticate(loginReq.UserName, loginReq.Password);
 
-            if (user == null)
+            if (userinfo == null)
             {
-                return Unauthorized();
+                return Unauthorized("Invalid user id or password");
             }
             var loginRes = new LoginResDto();
-            loginRes.UserName = user.Username;
-            loginRes.Token = CreateJWT(user);
+            loginRes.UserName = userinfo.Username;
+            loginRes.Token = CreateJWT(userinfo);
             return Ok(loginRes); 
         }
 
-        private string CreateJWT(UserInfo userinfo)
+        [HttpPost("register")]
+        public async Task<IActionResult> Register(LoginReqDto loginReq)
         {
+            if (await uow.UserInfoRepository.UseralreadyExists(loginReq.UserName))
+                return BadRequest("User already exists");
+            uow.UserInfoRepository.Register(loginReq.UserName, loginReq.Password);
+            await uow.SaveAsync();
+            return StatusCode(201);
+        }
+
+            private string CreateJWT(UserInfo userinfo)
+        {
+
+            var secretKey = configuration.GetSection("AppSettings:Key").Value;
             var key = new SymmetricSecurityKey(Encoding.UTF8
-                .GetBytes("this is a secret"));
+                .GetBytes(secretKey));
+
             var claims = new Claim[]
             {
                 new Claim(ClaimTypes.Name,userinfo.Username),
@@ -55,7 +72,7 @@ namespace E_HealthCare.Controllers
             var tokenDescriptor = new SecurityTokenDescriptor
             {
                 Subject = new ClaimsIdentity(claims),
-                Expires = DateTime.UtcNow.AddMinutes(1),
+                Expires = DateTime.UtcNow.AddDays(10),
                 SigningCredentials = signingCredentials
             };
 

@@ -36,7 +36,7 @@ namespace E_HealthCare.Controllers
         [AllowAnonymous]
         public async Task<IActionResult> GetCategories()
         {
-            throw new UnauthorizedAccessException();
+            //throw new UnauthorizedAccessException();
             var categories = await uow.CategoryRepository.GetCategoriesAsync ();
             return Ok(categories);
             

@@ -5,10 +5,10 @@ using System.Threading.Tasks;
 
 namespace E_HealthCare.Dtos
 {
-    public class LoginResDto
+    public class LoginReqDto
     {
-        public string UserName  { get; set; }
+        public string UserName { get; set; }
 
-        public string Token { get; set; }
+        public string Password{ get; set; }
     }
 }

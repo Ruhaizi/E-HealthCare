@@ -39,11 +39,15 @@ namespace E_HealthCare
         public void ConfigureServices(IServiceCollection services)
         {
             services.AddControllers().AddNewtonsoftJson();
-            services.AddCors();
-            services.AddScoped< IUnitOfWork, UnitOfWork>();
+            services.AddCors(c =>
+            {
+                c.AddPolicy("AllowOrigin", options => options.AllowAnyOrigin());
+            });
+            services.AddScoped<IUnitOfWork, UnitOfWork>();
 
+            var secretKey = Configuration.GetSection("AppSettings:Key").Value;
             var key = new SymmetricSecurityKey(Encoding.UTF8
-                .GetBytes("this is a secret"));
+                .GetBytes(secretKey));
 
             services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
                 .AddJwtBearer(opt=> {
@@ -53,15 +57,12 @@ namespace E_HealthCare
                         ValidateIssuer = false,
                         ValidateAudience = false,
                         IssuerSigningKey = key
-                    }
+                    };
                     });
             services.AddDbContext<UserDetailContext>(options =>
            options.UseSqlServer(Configuration.GetConnectionString("UserDetailContext")));
 
-            services.AddSwaggerGen(c=>
-            {
-                c.SwaggerDoc("v1", new OpenApiInfo { Title = "UserDetailAPI", Version = "v1" });
-            });
+
 
         }
        
@@ -73,11 +74,11 @@ namespace E_HealthCare
             app.ConfigureExceptionHandler(env);
 
 
+            app.UseRouting();
             app.UseHttpsRedirection();
 
-            app.UseRouting();
 
-            app.UseCors(m => m.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
+            app.UseCors(options=> options.AllowAnyOrigin().AllowAnyHeader().AllowAnyMethod());
 
             app.UseAuthentication();
             app.UseAuthorization();
@@ -87,5 +88,5 @@ namespace E_HealthCare
                 endpoints.MapControllers();
             });
         }
-    }
+    } 
 }
